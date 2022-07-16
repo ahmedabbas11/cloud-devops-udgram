@@ -1,0 +1,139 @@
+
+Description: >
+  udacity project 2 web servers template.
+  It deploys web servers autoscaling group, load balancers, load balancer healthcheck and target group.
+  For more information, please refer to architecture diagram in the same project
+
+Parameters:
+  env:
+    Description: env name to be appened on all resources
+    Type: String
+  instanceType:
+    Type: String
+    Description: instance type in the autoscaling group. It will be changed in different environments (local or prod)
+  minServerCount:
+    Type: Number
+    Description: minimum number of web servers in autoscaling group. It will be environment dependant (for example 1 in local)
+
+Resources:
+  webserverSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: web servers security group 
+      VpcId: 
+        Fn::ImportValue:
+          !Sub "${env}-VPCID"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+  webserverLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      # AMI name ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-20201026
+       # image is changed based on region , this one is for us-east-1 !!
+      ImageId: ami-00ddb0e5626798373
+      InstanceType: !Ref instanceType
+      SecurityGroups:
+      - Ref: webserverSecurityGroup
+      BlockDeviceMappings:
+      - DeviceName: "/dev/sdk"
+        Ebs:
+          VolumeSize: 10
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt-get update -y
+          apt-get install apache2 -y
+          systemctl start apache2.service
+          cd /var/www/html
+          echo "it works! Udagram, Udacity" > index.html
+      
+  webserverGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MaxSize: '4'
+      MinSize: !Ref minServerCount
+      LaunchConfigurationName: !Ref webserverLaunchConfig
+      VPCZoneIdentifier:
+      - Fn::ImportValue: 
+          !Sub "${env}-private-subnets"
+      TargetGroupARNs:
+      - Ref: webserverTargetGroup
+
+  loadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: load balancer security roles
+      VpcId: 
+        Fn::ImportValue: 
+          !Sub "${env}-VPCID"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+  loadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+      - Fn::ImportValue: !Sub "${env}-public-subnet-1"
+      - Fn::ImportValue: !Sub "${env}-public-subnet-2"
+      SecurityGroups:
+      - Ref: loadBalancerSecurityGroup
+
+  listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: webserverTargetGroup
+      LoadBalancerArn:
+        Ref: loadBalancer
+      Port: '80'
+      Protocol: HTTP
+  listenerRule:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Properties:
+        Actions:
+        - Type: forward
+          TargetGroupArn: !Ref 'webserverTargetGroup'
+        Conditions:
+        - Field: path-pattern
+          Values: [/]
+        ListenerArn: !Ref 'listener'
+        Priority: 1
+  webserverTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: 
+        Fn::ImportValue:
+          Fn::Sub: "${env}-VPCID"
+
+Outputs:
+
+  loadBalancerUrl:
+    Description: load balancer url
+    Value: !Sub http://${loadBalancer.DNSName}
+    Export:
+      Name: !Sub ${env}-url

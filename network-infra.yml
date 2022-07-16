@@ -81,7 +81,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref vpc
-      AvailabilityZone: !Select [2, !GetAZs '']
+      AvailabilityZone: !Select [0, !GetAZs '']
       CidrBlock: !Ref privateSubnet1Cidr
       MapPublicIpOnLaunch: false
       Tags:
@@ -92,7 +92,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref vpc
-      AvailabilityZone: !Select [3, !GetAZs '']
+      AvailabilityZone: !Select [1, !GetAZs '']
       CidrBlock: !Ref privateSubnet2Cidr
       MapPublicIpOnLaunch: false
       Tags:
@@ -213,3 +213,13 @@ Outputs:
     Export:
       Name: !Sub ${env}-private-subnets
   
+  PublicSubnet1:
+    Description: public subnet 1
+    Value: !Ref publicSubnet1
+    Export:
+      Name: !Sub ${env}-public-subnet-1
+  PublicSubnet2: 
+    Description: public subnet 2
+    Value: !Ref publicSubnet2
+    Export:
+      Name: !Sub ${env}-public-subnet-2

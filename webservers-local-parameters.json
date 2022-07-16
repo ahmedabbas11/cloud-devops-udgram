@@ -1,0 +1,14 @@
+[
+    {
+        "ParameterKey":"env",
+        "ParameterValue":"project2"
+    },
+    {
+        "ParameterKey":"instanceType",
+        "ParameterValue":"t3.micro"
+    },
+    {
+        "ParameterKey":"minServerCount",
+        "ParameterValue":"1"
+    }
+]

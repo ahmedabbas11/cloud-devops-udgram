@@ -1,0 +1,14 @@
+[
+    {
+        "ParameterKey":"env",
+        "ParameterValue":"project2"
+    },
+    {
+        "ParameterKey":"instanceType",
+        "ParameterValue":"t3.medium"
+    },
+    {
+        "ParameterKey":"minServerCount",
+        "ParameterValue":"4"
+    }
+]
